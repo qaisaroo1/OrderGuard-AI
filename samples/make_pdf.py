@@ -1,0 +1,93 @@
+"""
+Creates a valid sample court order PDF without requiring external heavy PDF generators.
+Uses standard PDF 1.4 syntax.
+"""
+import os
+
+def create_court_order_pdf(filename: str):
+    # Minimal valid multi-page PDF text
+    content = """%PDF-1.4
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [3 0 R 4 0 R] /Count 2 >>
+endobj
+3 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 5 0 R >> >> /Contents 6 0 R >>
+endobj
+4 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 5 0 R >> >> /Contents 7 0 R >>
+endobj
+5 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+6 0 obj
+<< /Length 420 >>
+stream
+BT
+/F1 14 Tf
+50 720 Td
+(IN THE HIGH COURT OF SINDH AT KARACHI) Tj
+0 -25 Td
+/F1 11 Tf
+(Constitution Petition No. D - 2849 of 2026) Tj
+0 -20 Td
+(M/s Orient Textiles Ltd. vs Province of Sindh & Others) Tj
+0 -30 Td
+(ORDER DATED 28.09.2026:) Tj
+0 -25 Td
+(1. The petitioner challenges freeze order on commercial accounts.) Tj
+0 -25 Td
+(2. Petitioner is directed to deposit 15 percent of disputed tax) Tj
+0 -18 Td
+((PKR 4,500,000) with the Nazir of this Court within 10 days.) Tj
+0 -20 Td
+(3. In default, interim stay shall stand vacated automatically.) Tj
+ET
+endstream
+endobj
+7 0 obj
+<< /Length 410 >>
+stream
+BT
+/F1 11 Tf
+50 720 Td
+(PAGE 2 - CONTINUATION OF ORDER) Tj
+0 -30 Td
+(4. Upon submission of deposit certificate, Respondents shall) Tj
+0 -18 Td
+(immediately defreeze accounts within 24 hours.) Tj
+0 -20 Td
+(5. Failing which Contempt of Court proceedings will be initiated.) Tj
+0 -25 Td
+(6. Parawise comments be filed within 3 weeks positively.) Tj
+0 -25 Td
+(7. Matter listed on 04.11.2026 for compliance.) Tj
+ET
+endstream
+endobj
+xref
+0 8
+0000000000 65535 f 
+0000000009 00000 n 
+0000000058 00000 n 
+0000000121 00000 n 
+0000000236 00000 n 
+0000000351 00000 n 
+0000000424 00000 n 
+0000000908 00000 n 
+trailer
+<< /Size 8 /Root 1 0 R >>
+startxref
+1382
+%%EOF
+"""
+    with open(filename, "wb") as f:
+        f.write(content.encode("latin-1"))
+    print(f"Sample PDF created at {filename}")
+
+if __name__ == "__main__":
+    out_dir = os.path.dirname(os.path.abspath(__file__))
+    target = os.path.join(out_dir, "sample_court_order.pdf")
+    create_court_order_pdf(target)

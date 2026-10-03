@@ -1,0 +1,86 @@
+{
+  "metadata": {
+    "case_title": "M/s Orient Textiles Ltd. vs. Province of Sindh & Others",
+    "case_number": "C.P. No. D-2849 of 2026",
+    "court_name": "High Court of Sindh, Karachi",
+    "judge_names": "Mr. Justice Tariq Mehmood Jahangiri, Mr. Justice Arshad Hussain",
+    "order_date": "2026-09-28",
+    "brief_summary": "Constitutional petition challenging illegal recovery notices issued by provincial tax authorities. The Court granted an interim stay against account freezing subject to a partial deposit."
+  },
+  "actions": [
+    {
+      "id": "ACT-01",
+      "obligated_party": "Petitioner (M/s Orient Textiles)",
+      "target_party": "Nazir / Court Treasury",
+      "action_required": "Deposit 15% of the disputed demand (PKR 4.5 Million) in the shape of pay order or bank guarantee with the Nazir of this Court.",
+      "deadline_type": "Relative",
+      "deadline_text": "Within 10 days from the date of this order",
+      "days_offset": 10,
+      "trigger_event": "Date of announcement of order (2026-09-28)",
+      "condition": "Prerequisite to maintain interim protective order.",
+      "consequence_risk": "Interim stay shall stand automatically vacated without further notice to the petitioner, and recovery proceedings will resume.",
+      "risk_severity": "CRITICAL",
+      "source_citation": {
+        "page_number": 3,
+        "paragraph_reference": "Para 7",
+        "verbatim_quote": "The petitioner shall deposit 15% of the impugned tax demand with the Nazir of this Court within ten (10) days from today, failing which the interim relief granted herein shall cease to operate."
+      }
+    },
+    {
+      "id": "ACT-02",
+      "obligated_party": "Respondent No. 2 (Sindh Revenue Board)",
+      "target_party": "Petitioner",
+      "action_required": "Immediately de-freeze all commercial bank accounts of the petitioner and refrain from coercive recovery steps.",
+      "deadline_type": "Relative",
+      "deadline_text": "Within 24 hours of receiving proof of deposit from Nazir",
+      "days_offset": 1,
+      "trigger_event": "Verification of 15% deposit by Nazir",
+      "condition": "Contingent upon Petitioner complying with ACT-01.",
+      "consequence_risk": "Initiation of Contempt of Court proceedings under Article 204 of the Constitution against the Commissioner.",
+      "risk_severity": "HIGH",
+      "source_citation": {
+        "page_number": 4,
+        "paragraph_reference": "Para 8",
+        "verbatim_quote": "Upon submission of the Nazir's compliance certificate, Respondent No. 2 is directed to defreeze the bank accounts within 24 hours without fail."
+      }
+    },
+    {
+      "id": "ACT-03",
+      "obligated_party": "Respondents No. 1 to 4",
+      "target_party": "Court Registry",
+      "action_required": "Submit detailed parawise comments and counter-affidavit along with relevant administrative records.",
+      "deadline_type": "Relative",
+      "deadline_text": "Within 3 weeks from receipt of court notice",
+      "days_offset": 21,
+      "trigger_event": "Service of formal court notice",
+      "condition": null,
+      "consequence_risk": "Ex-parte proceedings will be ordered and right to file written statement shall stand forfeited.",
+      "risk_severity": "MEDIUM",
+      "source_citation": {
+        "page_number": 4,
+        "paragraph_reference": "Para 9",
+        "verbatim_quote": "Issue notice to respondents. Parawise comments be filed within three weeks positively."
+      }
+    },
+    {
+      "id": "ACT-04",
+      "obligated_party": "Court Office / Registrar",
+      "target_party": "Both Parties",
+      "action_required": "Fix the matter for regular hearing before the division bench on the next assigned cause list.",
+      "deadline_type": "Absolute",
+      "deadline_text": "2026-11-04",
+      "days_offset": null,
+      "trigger_event": null,
+      "condition": null,
+      "consequence_risk": "Case delay and procedural adjournment.",
+      "risk_severity": "LOW",
+      "source_citation": {
+        "page_number": 5,
+        "paragraph_reference": "Para 11",
+        "verbatim_quote": "Relist on 04.11.2026 for regular hearing."
+      }
+    }
+  ],
+  "total_obligations": 4,
+  "critical_risks_count": 2
+}
