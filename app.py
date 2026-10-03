@@ -23,65 +23,117 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Custom Styling for polished hackathon presentation
+# Custom Styling - Dark & Light Mode Adaptive with Modern Glassmorphism
 st.markdown("""
 <style>
+    /* Header typography */
     .main-header {
-        font-size: 2.3rem;
-        font-weight: 700;
-        color: #1E3A8A;
+        font-size: 2.2rem;
+        font-weight: 800;
+        letter-spacing: -0.5px;
         margin-bottom: 0.2rem;
     }
     .sub-header {
         font-size: 1.05rem;
-        color: #4B5563;
+        opacity: 0.85;
         margin-bottom: 1.5rem;
+        line-height: 1.5;
     }
-    .metric-card {
-        background: #F3F4F6;
-        border-radius: 8px;
-        padding: 12px;
-        border-left: 5px solid #3B82F6;
+    
+    /* Metadata and Stats Cards */
+    .meta-box {
+        background: rgba(125, 125, 125, 0.08);
+        border: 1px solid rgba(125, 125, 125, 0.2);
+        border-radius: 12px;
+        padding: 16px 20px;
+        height: 100%;
     }
-    .critical-badge {
-        background-color: #FEE2E2;
-        color: #991B1B;
-        padding: 3px 8px;
-        border-radius: 4px;
+    .stat-card {
+        background: rgba(125, 125, 125, 0.08);
+        border: 1px solid rgba(125, 125, 125, 0.2);
+        border-radius: 12px;
+        padding: 16px;
+        text-align: center;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+    }
+    .stat-card.risk-critical {
+        border: 1px solid rgba(239, 68, 68, 0.4);
+        background: rgba(239, 68, 68, 0.08);
+    }
+    .stat-number {
+        font-size: 2.3rem;
+        font-weight: 800;
+        line-height: 1;
+        margin-bottom: 6px;
+    }
+    .stat-label {
+        font-size: 0.85rem;
+        text-transform: uppercase;
+        letter-spacing: 0.8px;
         font-weight: 600;
-        font-size: 0.8rem;
+        opacity: 0.8;
     }
-    .high-badge {
-        background-color: #FFEDD5;
-        color: #9A3412;
-        padding: 3px 8px;
-        border-radius: 4px;
-        font-weight: 600;
-        font-size: 0.8rem;
+    
+    /* Action item cards */
+    .action-card {
+        background: rgba(125, 125, 125, 0.06);
+        border: 1px solid rgba(125, 125, 125, 0.2);
+        border-radius: 10px;
+        padding: 16px 18px;
+        margin-bottom: 14px;
+        transition: transform 0.15s ease, border-color 0.15s ease;
     }
-    .medium-badge {
-        background-color: #FEF9C3;
-        color: #854D0E;
-        padding: 3px 8px;
-        border-radius: 4px;
-        font-weight: 600;
-        font-size: 0.8rem;
+    .action-card:hover {
+        border-color: rgba(59, 130, 246, 0.5);
     }
-    .low-badge {
-        background-color: #DCFCE7;
-        color: #166534;
-        padding: 3px 8px;
-        border-radius: 4px;
-        font-weight: 600;
-        font-size: 0.8rem;
+    
+    /* Risk Badges */
+    .badge {
+        padding: 4px 10px;
+        border-radius: 6px;
+        font-weight: 700;
+        font-size: 0.78rem;
+        letter-spacing: 0.5px;
+        display: inline-block;
     }
+    .badge-critical {
+        background-color: rgba(239, 68, 68, 0.2);
+        color: #F87171;
+        border: 1px solid rgba(239, 68, 68, 0.5);
+    }
+    .badge-high {
+        background-color: rgba(249, 115, 22, 0.2);
+        color: #FB923C;
+        border: 1px solid rgba(249, 115, 22, 0.5);
+    }
+    .badge-medium {
+        background-color: rgba(234, 179, 8, 0.2);
+        color: #FACC15;
+        border: 1px solid rgba(234, 179, 8, 0.5);
+    }
+    .badge-low {
+        background-color: rgba(34, 197, 94, 0.2);
+        color: #4ADE80;
+        border: 1px solid rgba(34, 197, 94, 0.5);
+    }
+    
     .quote-box {
         font-style: italic;
-        background: #F8FAFC;
-        border-left: 3px solid #64748B;
-        padding: 8px 12px;
-        margin-top: 6px;
-        font-size: 0.9rem;
+        background: rgba(125, 125, 125, 0.05);
+        border-left: 3px solid #3B82F6;
+        padding: 10px 14px;
+        margin-top: 8px;
+        border-radius: 0 6px 6px 0;
+        font-size: 0.92rem;
+        line-height: 1.5;
+    }
+    .party-title {
+        font-size: 1.15rem;
+        font-weight: 700;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -99,7 +151,7 @@ with st.sidebar:
         "Gemini API Key",
         value=os.getenv("GEMINI_API_KEY", ""),
         type="password",
-        help="Enter your Google Gemini API key or use mock mode."
+        help="Enter your Google Gemini API key or use demo fallback mode."
     )
     
     model_choice = st.selectbox(
@@ -147,7 +199,7 @@ with col_input_text:
     if raw_text:
         st.session_state["raw_text_input"] = raw_text
 
-col_btn, col_date = st.columns([1, 1])
+col_btn, col_date = st.columns([1.2, 1])
 with col_btn:
     analyze_btn = st.button("🚀 Parse & Map Legal Actions", type="primary", use_container_width=True)
 
@@ -175,7 +227,7 @@ if analyze_btn:
         st.warning("Please upload a court order PDF or paste the judgment text to continue.")
 
     if document_text:
-        with st.spinner("Multi-agent analysis running: Isolating obligations, conditions, deadlines & consequences..."):
+        with st.spinner("Analyzing judgment: Isolating obligations, conditions, deadlines & consequences..."):
             try:
                 pipeline = LegalExtractionPipeline(api_key=user_api_key, model_name=model_choice)
                 action_map = pipeline.analyze_order(document_text, use_mock_fallback=use_mock_fallback)
@@ -192,36 +244,56 @@ if st.session_state.get("action_map"):
 
     st.markdown("---")
     
-    # Case Overview Banner
+    # Case Overview Header
     st.markdown(f"### 📋 {meta.case_title}")
     
-    col_m1, col_m2, col_m3, col_m4 = st.columns(4)
-    with col_m1:
-        st.metric("Case / Petition No.", meta.case_number)
-    with col_m2:
-        st.metric("Court / Bench", meta.court_name)
-    with col_m3:
-        st.metric("Total Obligations", action_map.total_obligations)
-    with col_m4:
-        st.metric("Critical / High Risks", action_map.critical_risks_count)
+    # IMPROVED: Non-truncated, responsive metadata & stat cards
+    col_meta, col_stat1, col_stat2 = st.columns([2.2, 1, 1])
+    
+    with col_meta:
+        st.markdown(f"""
+        <div class="meta-box">
+            <div style="font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.8px; opacity: 0.75; font-weight: 600;">Case & Jurisdiction Details</div>
+            <div style="font-size: 1.25rem; font-weight: 700; margin: 4px 0;">{meta.case_number}</div>
+            <div style="font-size: 0.98rem; opacity: 0.9; margin-bottom: 6px;">🏛️ <strong>{meta.court_name}</strong></div>
+            <div style="font-size: 0.88rem; opacity: 0.75;">📅 Order Announced: <strong>{meta.order_date}</strong></div>
+        </div>
+        """, unsafe_allow_html=True)
+        
+    with col_stat1:
+        st.markdown(f"""
+        <div class="stat-card">
+            <div class="stat-number" style="color: #3B82F6;">{action_map.total_obligations}</div>
+            <div class="stat-label">Total Obligations</div>
+            <div style="font-size: 0.75rem; opacity: 0.65; margin-top: 4px;">Directives Tracked</div>
+        </div>
+        """, unsafe_allow_html=True)
+        
+    with col_stat2:
+        st.markdown(f"""
+        <div class="stat-card risk-critical">
+            <div class="stat-number" style="color: #EF4444;">{action_map.critical_risks_count}</div>
+            <div class="stat-label" style="color: #EF4444;">Critical / High Risks</div>
+            <div style="font-size: 0.75rem; opacity: 0.75; margin-top: 4px;">Severe Legal Fallout</div>
+        </div>
+        """, unsafe_allow_html=True)
 
     # Executive Summary Card
-    with st.expander("📌 Case Summary & Presiding Bench", expanded=True):
-        st.write(f"**Presiding Bench:** {meta.judge_names or 'Not specified'}")
-        st.write(f"**Order Date:** {meta.order_date}")
-        st.info(f"**Summary:** {meta.brief_summary}")
+    with st.expander("📌 Presiding Bench & Executive Case Summary", expanded=True):
+        st.markdown(f"**Presiding Bench:** {meta.judge_names or 'Presiding Bench not specified'}")
+        st.info(f"**Dispute Summary:** {meta.brief_summary}")
 
     st.markdown("---")
 
     # Perspective & Filter Switcher
-    st.markdown("### 🎯 Legal Action Map & Risk Matrix")
+    st.markdown("### 🎯 Legal Action Map & Execution Matrix")
     
     parties = list(set([a.obligated_party for a in action_map.actions]))
     filter_col1, filter_col2 = st.columns([1, 1])
     
     with filter_col1:
         selected_party = st.selectbox(
-            "👤 Filter by Obligated Party (Perspective Switcher):",
+            "👤 Perspective Switcher (Filter by Obligated Party):",
             ["All Parties"] + parties
         )
     with filter_col2:
@@ -242,13 +314,13 @@ if st.session_state.get("action_map"):
         st.info("No action items match the selected filter criteria.")
     else:
         for item in filtered_actions:
-            # Determine badge styling
+            # Determine badge styling class
             badge_class = {
-                "CRITICAL": "critical-badge",
-                "HIGH": "high-badge",
-                "MEDIUM": "medium-badge",
-                "LOW": "low-badge"
-            }.get(item.risk_severity, "low-badge")
+                "CRITICAL": "badge-critical",
+                "HIGH": "badge-high",
+                "MEDIUM": "badge-medium",
+                "LOW": "badge-low"
+            }.get(item.risk_severity, "badge-low")
 
             # Calculate estimated deadline date if relative
             calculated_date_str = ""
@@ -256,36 +328,36 @@ if st.session_state.get("action_map"):
                 calc_date = trigger_base_date + timedelta(days=item.days_offset)
                 calculated_date_str = f" ➔ **Target Date:** `{calc_date.strftime('%d %b %Y')}`"
 
-            with st.container():
-                st.markdown(f"""
-                <div style="border: 1px solid #E5E7EB; border-radius: 8px; padding: 14px; margin-bottom: 12px; background: #FFFFFF;">
-                    <div style="display: flex; justify-content: space-between; align-items: center;">
-                        <span style="font-weight: 700; font-size: 1.05rem; color: #1F2937;">{item.id}: {item.obligated_party}</span>
-                        <span class="{badge_class}">{item.risk_severity} RISK</span>
-                    </div>
-                    <div style="margin-top: 8px; font-size: 1.05rem; color: #111827;">
-                        <strong>Action:</strong> {item.action_required}
-                    </div>
+            # Render action card
+            st.markdown(f"""
+            <div class="action-card">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                    <span class="party-title">{item.id}: {item.obligated_party}</span>
+                    <span class="badge {badge_class}">{item.risk_severity} RISK</span>
                 </div>
-                """, unsafe_allow_html=True)
+                <div style="font-size: 1.05rem; line-height: 1.5;">
+                    <strong>Directive:</strong> {item.action_required}
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
 
-                col_det1, col_det2 = st.columns([1.2, 1])
-                with col_det1:
-                    st.write(f"⏱️ **Deadline:** `{item.deadline_text}` ({item.deadline_type}){calculated_date_str}")
-                    if item.condition:
-                        st.warning(f"⚠️ **Prerequisite Condition:** {item.condition}")
-                    if item.target_party:
-                        st.caption(f"🎯 **Beneficiary / Target:** {item.target_party}")
+            col_det1, col_det2 = st.columns([1.2, 1])
+            with col_det1:
+                st.markdown(f"⏱️ **Deadline:** `{item.deadline_text}` ({item.deadline_type}){calculated_date_str}")
+                if item.condition:
+                    st.warning(f"⚠️ **Prerequisite Condition:** {item.condition}")
+                if item.target_party:
+                    st.caption(f"🎯 **Beneficiary / Target:** {item.target_party}")
 
-                with col_det2:
-                    st.error(f"🚨 **Fallout if Missed:** {item.consequence_risk}")
+            with col_det2:
+                st.error(f"🚨 **Fallout if Missed:** {item.consequence_risk}")
 
-                # Grounding & Citation
-                with st.expander(f"🔍 Citation Proof (Page {item.source_citation.page_number})"):
-                    st.markdown(f"**Reference:** {item.source_citation.paragraph_reference or 'Paragraph'}")
-                    st.markdown(f'<div class="quote-box">"{item.source_citation.verbatim_quote}"</div>', unsafe_allow_html=True)
+            # Grounding & Citation
+            with st.expander(f"🔍 Citation Proof (Page {item.source_citation.page_number})"):
+                st.markdown(f"**Reference:** {item.source_citation.paragraph_reference or 'Paragraph Reference'}")
+                st.markdown(f'<div class="quote-box">"{item.source_citation.verbatim_quote}"</div>', unsafe_allow_html=True)
 
-                st.markdown("<div style='height: 10px;'></div>", unsafe_allow_html=True)
+            st.markdown("<div style='height: 8px;'></div>", unsafe_allow_html=True)
 
     # --- EXPORT & INTEGRATION SECTION ---
     st.markdown("---")
