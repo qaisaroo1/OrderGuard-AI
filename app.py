@@ -149,7 +149,7 @@ st.set_page_config(
     page_title="OrderGuard AI",
     page_icon="⚖️",
     layout="wide",
-    initial_sidebar_state="collapsed",
+    initial_sidebar_state="expanded",
 )
 
 # -------------------------------------------------------------------
@@ -631,33 +631,7 @@ with st.sidebar:
         unsafe_allow_html=True,
     )
 
-    has_api_key = bool(os.getenv("GEMINI_API_KEY"))
-    with st.expander("AI Settings", expanded=not has_api_key):
-        user_key = st.text_input(
-            "Gemini API Key",
-            value=os.getenv("GEMINI_API_KEY", ""),
-            type="password",
-            help="Enter your Google Gemini API key or set it in Streamlit Cloud Secrets.",
-        )
-        if user_key and user_key.strip():
-            os.environ["GEMINI_API_KEY"] = user_key.strip()
-            has_api_key = True
-
-        if has_api_key:
-            st.success("Gemini API key is active.")
-        else:
-            st.info("No API key set: Demo / Fallback mode will be used automatically.")
-
-        st.caption(f"Backend: {API_BASE_URL}")
-        model_choice = st.selectbox(
-            "Extraction Model",
-            ["gemini-3.5-flash-lite", "gemini-3.8-flash", "gemini-3.7-flash"],
-            index=0,
-        )
-        use_mock_fallback = st.checkbox(
-            "Allow Demo / Fallback Mode",
-            value=not has_api_key,
-        )
+    st.caption(f"Backend: {API_BASE_URL}")
 
     st.markdown("#### Quick Start")
     if st.button("Load Sample Court Order", use_container_width=True):
@@ -754,6 +728,41 @@ with right:
 
 st.write("")
 
+# -------------------------------------------------------------------
+# AI CONFIGURATION & API KEY INPUT (FRONT & CENTER)
+# -------------------------------------------------------------------
+has_api_key = bool(os.getenv("GEMINI_API_KEY"))
+with st.expander("🔑 AI Settings & Gemini API Key (Enter key for live custom document extraction)", expanded=not has_api_key):
+    api_k_col, model_k_col = st.columns([2, 1])
+    with api_k_col:
+        user_key = st.text_input(
+            "Gemini API Key",
+            value=os.getenv("GEMINI_API_KEY", ""),
+            type="password",
+            placeholder="AIzaSy...",
+            help="Enter your Google Gemini API key to extract live data from any custom PDF or order.",
+        )
+        if user_key and user_key.strip():
+            os.environ["GEMINI_API_KEY"] = user_key.strip()
+            has_api_key = True
+
+    with model_k_col:
+        model_choice = st.selectbox(
+            "Extraction Model",
+            ["gemini-3.5-flash-lite", "gemini-3.8-flash", "gemini-3.7-flash"],
+            index=0,
+        )
+
+    use_mock_fallback = st.checkbox(
+        "Allow Demo / Fallback Mode (Uncheck to strictly require Gemini AI)",
+        value=not has_api_key,
+    )
+
+    if has_api_key:
+        st.success("✅ Gemini API key is active. Live autonomous extraction will run on your document!")
+    else:
+        st.info("ℹ️ No API key set. The system will run in Demo Mode using the pre-saved sample.")
+
 # Analysis controls: compact, balanced row. No unsupported 'analysis mode' selector is added.
 date_col, action_col = st.columns([1, 1], gap="large")
 
@@ -845,7 +854,7 @@ if analyze_btn:
                         else:
                             text_to_analyze = source["raw_text"]
 
-                        pipe = LegalExtractionPipeline(model_name=model_choice)
+                        pipe = LegalExtractionPipeline(api_key=os.getenv("GEMINI_API_KEY"), model_name=model_choice)
                         pipeline_res = pipe.analyze_order(
                             text_to_analyze, use_mock_fallback=use_mock_fallback
                         )
