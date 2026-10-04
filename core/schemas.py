@@ -74,6 +74,21 @@ class CaseMetadata(BaseModel):
     )
 
 
+class AgentTraceStep(BaseModel):
+    agent_name: str = Field(
+        ..., description="Name of the specialized agent (e.g. 'ClauseExtractorAgent')"
+    )
+    role: str = Field(
+        ..., description="Specialty of the agent"
+    )
+    status: str = Field(
+        default="Completed", description="Execution status of the agent"
+    )
+    findings_summary: str = Field(
+        ..., description="Summary of insights, dependencies, or validations found by this agent"
+    )
+
+
 class LegalActionMap(BaseModel):
     metadata: CaseMetadata
     actions: List[ActionItem] = Field(
@@ -84,4 +99,7 @@ class LegalActionMap(BaseModel):
     )
     critical_risks_count: int = Field(
         default=0, description="Count of obligations with CRITICAL or HIGH risk severity"
+    )
+    agent_traces: List[AgentTraceStep] = Field(
+        default_factory=list, description="Multi-agent audit trace detailing each agent's execution"
     )

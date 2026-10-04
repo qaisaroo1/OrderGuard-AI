@@ -645,22 +645,28 @@ if analyze_btn:
         )
 
     if document_text:
-        with st.spinner(
-            "Analyzing judgment: identifying obligations, deadlines, conditions and risks..."
-        ):
-            try:
-                pipeline = LegalExtractionPipeline(
-                    api_key=user_api_key,
-                    model_name=model_choice,
-                )
-                action_map = pipeline.analyze_order(
-                    document_text,
-                    use_mock_fallback=use_mock_fallback,
-                )
-                st.session_state["action_map"] = action_map
-                st.success("Legal Action Map generated successfully.")
-            except Exception as e:
-                st.error(f"Analysis failed: {str(e)}")
+        status_bar = st.progress(10, text="Initializing Multi-Agent Engine...")
+
+        def on_agent_progress(step, total, agent_name, message):
+            pct = int((step / total) * 90)
+            status_bar.progress(pct, text=f"🤖 [{step}/{total}] {agent_name}: {message}")
+
+        try:
+            pipeline = LegalExtractionPipeline(
+                api_key=user_api_key,
+                model_name=model_choice,
+            )
+            action_map = pipeline.analyze_order(
+                document_text,
+                use_mock_fallback=use_mock_fallback,
+                progress_callback=on_agent_progress,
+            )
+            status_bar.progress(100, text="✅ All 4 Specialized Agents Completed Successfully!")
+            st.session_state["action_map"] = action_map
+            st.success("Legal Action Map generated successfully via Multi-Agent Pipeline.")
+        except Exception as e:
+            status_bar.empty()
+            st.error(f"Analysis failed: {str(e)}")
 
 # -------------------------------------------------------------------
 # RESULTS DASHBOARD
@@ -939,6 +945,27 @@ if st.session_state.get("action_map"):
                     f"""
                     <div class="evidence-box">
                         “{escape(str(citation.verbatim_quote))}”
+                    </div>
+                    """,
+                    unsafe_allow_html=True,
+                )
+
+    # ----------------------------------------------------------------
+    # MULTI-AGENT EXECUTION AUDIT LOG
+    # ----------------------------------------------------------------
+    if hasattr(action_map, "agent_traces") and action_map.agent_traces:
+        with st.expander("🤖 Multi-Agent Execution Audit Log (Judge View)", expanded=False):
+            st.markdown("##### Specialized Agent Pipeline Execution Trace")
+            for trace in action_map.agent_traces:
+                st.markdown(
+                    f"""
+                    <div style="background: rgba(125, 125, 125, 0.05); border-left: 3px solid #1D4ED8; padding: 10px 14px; margin-bottom: 10px; border-radius: 4px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <strong style="color: #1D4ED8; font-size: 0.95rem;">{escape(str(trace.agent_name))}</strong>
+                            <span style="color: #10B981; font-weight: 700; font-size: 0.8rem;">● {escape(str(trace.status))}</span>
+                        </div>
+                        <div style="font-size: 0.85rem; opacity: 0.75; margin: 2px 0;">{escape(str(trace.role))}</div>
+                        <div style="font-size: 0.9rem; margin-top: 4px;">{escape(str(trace.findings_summary))}</div>
                     </div>
                     """,
                     unsafe_allow_html=True,

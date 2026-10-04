@@ -82,5 +82,31 @@
     }
   ],
   "total_obligations": 4,
-  "critical_risks_count": 2
+  "critical_risks_count": 2,
+  "agent_traces": [
+    {
+      "agent_name": "ClauseExtractorAgent",
+      "role": "Operative Directive & Obligation Extraction",
+      "status": "Verified",
+      "findings_summary": "Extracted 4 actionable obligations across parties."
+    },
+    {
+      "agent_name": "TimelineResolverAgent",
+      "role": "Chronology & Trigger Event Resolution",
+      "status": "Verified",
+      "findings_summary": "Resolved relative deadline chains and prerequisite dependencies."
+    },
+    {
+      "agent_name": "RiskAssessorAgent",
+      "role": "Penalties & Legal Risk Scoring",
+      "status": "Verified",
+      "findings_summary": "Identified 2 high-severity default consequences."
+    },
+    {
+      "agent_name": "CitationAuditorAgent",
+      "role": "Source Grounding & Anti-Hallucination Audit",
+      "status": "Passed",
+      "findings_summary": "Audited citations against source document. 2/4 directives strongly grounded in verbatim quotes."
+    }
+  ]
 }

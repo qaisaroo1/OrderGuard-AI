@@ -6,7 +6,8 @@ import json
 from typing import Optional, Dict
 from dotenv import load_dotenv
 
-from core.schemas import LegalActionMap, CaseMetadata, ActionItem, SourceCitation
+from core.schemas import LegalActionMap, CaseMetadata, ActionItem, SourceCitation, AgentTraceStep
+from core.agents import MultiAgentCoordinator
 
 load_dotenv()
 
@@ -51,50 +52,21 @@ class LegalExtractionPipeline:
                 # If google-genai is not yet installed or has issues, client remains None
                 print(f"Notice: Google GenAI initialization: {e}")
 
-    def analyze_order(self, text_with_pages: str, use_mock_fallback: bool = False) -> LegalActionMap:
+    def analyze_order(
+        self,
+        text_with_pages: str,
+        use_mock_fallback: bool = False,
+        progress_callback = None
+    ) -> LegalActionMap:
         """
-        Processes document text through Gemini and returns a validated LegalActionMap.
+        Executes the specialized multi-agent pipeline and returns a validated LegalActionMap.
         """
-        if not self.api_key or not self.client:
-            if use_mock_fallback or not self.api_key:
-                return self._get_mock_action_map()
-            raise ValueError("GEMINI_API_KEY is missing. Please set it in your .env file or environment.")
-
-        try:
-            from google.genai import types
-            
-            prompt = f"Analyze the following court judgment and generate the structured Legal Action Map:\n\n{text_with_pages}"
-            
-            response = self.client.models.generate_content(
-                model=self.model_name,
-                contents=prompt,
-                config=types.GenerateContentConfig(
-                    system_instruction=SYSTEM_PROMPT,
-                    response_mime_type="application/json",
-                    response_schema=LegalActionMap,
-                    temperature=0.1,  # Low temperature for precise legal extraction
-                )
-            )
-            
-            # Parse structured response into Pydantic model
-            if hasattr(response, "parsed") and response.parsed:
-                action_map = response.parsed
-            else:
-                raw_json = json.loads(response.text)
-                action_map = LegalActionMap(**raw_json)
-
-            # Recalculate totals
-            action_map.total_obligations = len(action_map.actions)
-            action_map.critical_risks_count = sum(
-                1 for a in action_map.actions if a.risk_severity in ["CRITICAL", "HIGH"]
-            )
-            return action_map
-
-        except Exception as e:
-            if use_mock_fallback:
-                print(f"Gemini API call failed ({e}). Falling back to sample extraction.")
-                return self._get_mock_action_map()
-            raise e
+        coordinator = MultiAgentCoordinator(api_key=self.api_key, model_name=self.model_name)
+        return coordinator.execute_workflow(
+            document_text=text_with_pages,
+            progress_callback=progress_callback,
+            use_mock_fallback=use_mock_fallback
+        )
 
     def _get_mock_action_map(self) -> LegalActionMap:
         """
@@ -184,5 +156,31 @@ class LegalExtractionPipeline:
                 )
             ],
             total_obligations=4,
-            critical_risks_count=2
+            critical_risks_count=2,
+            agent_traces=[
+                AgentTraceStep(
+                    agent_name="ClauseExtractorAgent",
+                    role="Operative Directive & Obligation Extraction",
+                    status="Verified",
+                    findings_summary="Scanned judgment and isolated 4 binding obligations across Petitioner, Respondent, and Registry."
+                ),
+                AgentTraceStep(
+                    agent_name="TimelineResolverAgent",
+                    role="Chronology & Trigger Event Resolution",
+                    status="Verified",
+                    findings_summary="Mapped relative timeline dependencies: 10 days for deposit and 24 hours defreeze trigger."
+                ),
+                AgentTraceStep(
+                    agent_name="RiskAssessorAgent",
+                    role="Penalties & Legal Risk Scoring",
+                    status="Verified",
+                    findings_summary="Calculated 2 critical risks: Automatic vacation of stay order and Contempt of Court liability."
+                ),
+                AgentTraceStep(
+                    agent_name="CitationAuditorAgent",
+                    role="Source Grounding & Anti-Hallucination Audit",
+                    status="Passed",
+                    findings_summary="100% of obligations validated against page numbers and verbatim excerpts."
+                )
+            ]
         )
