@@ -9,6 +9,7 @@ from datetime import datetime, timedelta
 from html import escape
 
 import streamlit as st
+import streamlit.components.v1 as components
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -16,6 +17,123 @@ load_dotenv()
 from core.schemas import LegalActionMap
 from core.api_client import API_BASE_URL, submit_analysis
 from samples.generate_sample_order import SAMPLE_ORDER_TEXT
+
+# -------------------------------------------------------------------
+# DEADLINE DISPLAY HELPERS
+# -------------------------------------------------------------------
+def calculate_deadline_date(base_date, action):
+    """Calculate a safe date for the frontend countdown."""
+    if action.days_offset is not None:
+        return base_date + timedelta(days=action.days_offset)
+
+    deadline_text = str(action.deadline_text or "")
+
+    # Absolute ISO date: 2026-11-04
+    import re
+    match = re.search(r"\b(20\d{2})-(\d{2})-(\d{2})\b", deadline_text)
+    if match:
+        try:
+            from datetime import date
+            return date(int(match.group(1)), int(match.group(2)), int(match.group(3)))
+        except ValueError:
+            pass
+
+    # Common court-order date: 04.11.2026 / 04-11-2026 / 04/11/2026
+    match = re.search(r"\b(\d{1,2})[./-](\d{1,2})[./-](20\d{2})\b", deadline_text)
+    if match:
+        try:
+            from datetime import date
+            return date(int(match.group(3)), int(match.group(2)), int(match.group(1)))
+        except ValueError:
+            pass
+
+    return None
+
+
+def render_deadline_countdown(action, base_date):
+    """Render a live browser-local countdown to the target date's end."""
+    due_date = calculate_deadline_date(base_date, action)
+
+    if due_date is None:
+        st.markdown(
+            """
+            <div class="deadline-panel">
+                <div style="color:#10213F;font-size:.78rem;font-weight:850;text-transform:uppercase;letter-spacing:.7px;">
+                    Deadline countdown
+                </div>
+                <div style="color:#64748B;font-size:.75rem;margin-top:.35rem;">
+                    The order contains a deadline, but no exact machine-readable date was available for a live countdown.
+                </div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+        return
+
+    due_iso = due_date.strftime("%Y-%m-%d")
+    base_iso = base_date.strftime("%Y-%m-%d")
+
+    countdown_html = f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <style>
+        * {{ box-sizing: border-box; }}
+        html, body {{ margin:0; padding:0; background:transparent; font-family:Inter,system-ui,-apple-system,'Segoe UI',sans-serif; }}
+        .panel {{ background:#F8FAFC; border:1px solid #E2E8F0; border-radius:13px; padding:13px 15px 12px; color:#10213F; }}
+        .head {{ display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:6px; }}
+        .title {{ font-size:12px; font-weight:850; text-transform:uppercase; letter-spacing:.7px; }}
+        .zone {{ color:#64748B; font-size:11px; white-space:nowrap; }}
+        .time {{ color:#1D4ED8; font-size:23px; font-weight:850; line-height:1.1; letter-spacing:.2px; }}
+        .date {{ color:#64748B; font-size:11px; margin-top:3px; }}
+        .track {{ height:7px; background:#E2E8F0; border-radius:999px; overflow:hidden; margin-top:10px; }}
+        .fill {{ height:100%; width:0%; background:#1D4ED8; border-radius:999px; transition:width .5s linear; }}
+        .panel.urgent {{ background:#FFF7ED; border-color:#FED7AA; }}
+        .panel.urgent .time {{ color:#D97706; }} .panel.urgent .fill {{ background:#D97706; }}
+        .panel.overdue {{ background:#FEF2F2; border-color:#FECACA; }}
+        .panel.overdue .time {{ color:#DC2626; }} .panel.overdue .fill {{ background:#DC2626; }}
+      </style>
+    </head>
+    <body>
+      <div id="panel" class="panel">
+        <div class="head"><div id="title" class="title">Time remaining</div><div id="zone" class="zone">Local time</div></div>
+        <div id="time" class="time">Calculating...</div>
+        <div id="date" class="date"></div>
+        <div class="track"><div id="fill" class="fill"></div></div>
+      </div>
+      <script>
+        const due = new Date("{due_iso}T23:59:59");
+        const start = new Date("{base_iso}T00:00:00");
+        const panel = document.getElementById("panel");
+        const title = document.getElementById("title");
+        const timeEl = document.getElementById("time");
+        const dateEl = document.getElementById("date");
+        const fill = document.getElementById("fill");
+        document.getElementById("zone").textContent = Intl.DateTimeFormat().resolvedOptions().timeZone || "Local timezone";
+        function update() {{
+          const now = new Date();
+          const remaining = due.getTime() - now.getTime();
+          const total = due.getTime() - start.getTime();
+          let progress = total > 0 ? ((now.getTime()-start.getTime())/total)*100 : 0;
+          progress = Math.max(0, Math.min(100, progress));
+          fill.style.width = progress + "%";
+          dateEl.textContent = "Target: " + new Intl.DateTimeFormat(undefined, {{weekday:"short",year:"numeric",month:"short",day:"numeric"}}).format(due) + " • End of local day";
+          if (remaining <= 0) {{
+            panel.className="panel overdue"; title.textContent="Deadline reached"; timeEl.textContent="00d 00h 00m 00s"; return;
+          }}
+          const sec=Math.floor(remaining/1000), d=Math.floor(sec/86400), h=Math.floor((sec%86400)/3600), m=Math.floor((sec%3600)/60), ss=sec%60;
+          const pad=n=>String(n).padStart(2,"0");
+          timeEl.textContent=pad(d)+"d "+pad(h)+"h "+pad(m)+"m "+pad(ss)+"s";
+          if (remaining <= 86400000) {{ panel.className="panel urgent"; title.textContent="Less than 24 hours"; }}
+          else {{ panel.className="panel"; title.textContent="Time remaining"; }}
+        }}
+        update(); setInterval(update,1000);
+      </script>
+    </body>
+    </html>
+    """
+    components.html(countdown_html, height=116, scrolling=False)
+
 
 # -------------------------------------------------------------------
 # PAGE CONFIG
@@ -451,6 +569,15 @@ st.markdown(
 
     .consequence-box .detail-value {
         color: #991B1B;
+    }
+
+    /* ---------- Deadline countdown ---------- */
+    .deadline-panel {
+        margin-top: 0.85rem;
+        background: #F8FAFC;
+        border: 1px solid #E2E8F0;
+        border-radius: 13px;
+        padding: 0.9rem 1rem;
     }
 
     /* ---------- Evidence ---------- */
@@ -933,6 +1060,10 @@ Order date: {escape(str(meta.order_date))}
 </div>
 </div>"""
             st.markdown(action_card_html, unsafe_allow_html=True)
+
+            # Live deadline countdown. Uses backend days_offset/deadline_text
+            # and the viewer's browser-local timezone.
+            render_deadline_countdown(item, trigger_base_date)
 
             # Evidence stays functional but is visually secondary.
             citation = item.source_citation
