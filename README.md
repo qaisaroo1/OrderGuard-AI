@@ -1,112 +1,60 @@
 # OrderGuard AI ⚖️
 ### Autonomous Legal Action Mapping & Execution Engine
 
-[![Python](https://img.shields.io/badge/Python-3.11%20%7C%203.14-blue.svg)](https://python.org)
-[![FastAPI](https://img.shields.io/badge/Backend-FastAPI-green.svg)](https://fastapi.tiangolo.com)
-[![Streamlit](https://img.shields.io/badge/Frontend-Streamlit-red.svg)](https://streamlit.io)
-[![Gemini](https://img.shields.io/badge/AI-Google%20Gemini-orange.svg)](https://deepmind.google/technologies/gemini/)
+![Python](https://img.shields.io/badge/Python-3.11%20%7C%203.14-blue)
+![AI](https://img.shields.io/badge/AI-Google%20Gemini-orange)
+![Frontend](https://img.shields.io/badge/Frontend-Streamlit-red)
+![Backend](https://img.shields.io/badge/Backend-FastAPI-green)
 
-Court orders and judgments are notoriously long, dense, and complex. Missing a single hidden deadline or conditional obligation can lead to legal penalties, contempt of court, or case dismissal. 
+---
 
-**OrderGuard AI** transforms passive legal document reading into an active, execution-ready workflow. By combining Generative AI (Google Gemini), structured Pydantic schemas, and citation grounding, it automatically parses court judgments to generate an interactive **Legal Action Map** tracking who must do what, by when, under what conditions, and with what consequences.
+## 📌 The Problem It Solves
+
+Court orders and legal judgments are notoriously long, dense, and complex—often spanning 30 to 50+ pages of convoluted legal jargon. 
+
+Buried deep within these documents are high-stakes, time-sensitive directives and conditional obligations. Missing a single hidden deadline or prerequisite condition can lead to catastrophic legal consequences:
+* **Automatic vacation of stay orders** (allowing authorities to seize bank accounts or property).
+* **Contempt of Court proceedings** under constitutional law.
+* **Ex-parte decrees and procedural dismissals** forfeiting the right of defense.
+
+Lawyers and corporate compliance teams currently rely on manual reading and manual highlighter tracking, making human error in high-volume litigation inevitable.
+
+---
+
+## 💡 The Solution
+
+**OrderGuard AI** transforms passive court document reading into an active, zero-failure execution roadmap. 
+
+Powered by **Google Gemini** and specialized agentic orchestration, OrderGuard AI automatically parses unstructured court judgments to generate an interactive **Legal Action Map** tracking:
+* **Who** must act (*Petitioner, Respondent, Court Registry, Third Party*)
+* **What** must be done (*Binding directives and prohibitions*)
+* **By when** (*Concrete calendar deadlines translated from relative clauses*)
+* **Under what condition** (*Contingencies and prerequisites*)
+* **With what consequence** (*Legal penalties and compliance risk severity*)
 
 ---
 
 ## 🚀 Key Features
 
-* **Agentic Legal Extraction:** Isolates obligations, absolute/relative deadlines, conditional contingencies, and required evidence from unstructured legal text.
-* **Risk & Consequence Mapping:** Explicitly details the legal fallout or penalties (e.g. *Contempt of Court*, *Vacation of Stay*, *Attachment of Assets*) if an action is missed.
-* **Anti-Hallucination Citation Grounding:** Every extracted task references the exact page number and verbatim excerpt from the judgment.
-* **Perspective Switcher (Multi-Party View):** Filter tasks by party (e.g., Petitioner Counsel vs. Respondent Defense Counsel) to spot obligations or enforce opposing counsel deadlines.
-* **Smart Relative Date Resolution:** Automatically translates relative clauses (*"within 14 days of receipt"*) into concrete calendar actions based on service date.
-* **Developer Contract & Export:** 1-Click download of structured JSON (for frontend developers) and `.ics` Calendar sync.
+* 🤖 **Specialized 4-Agent Pipeline:**
+  * **Agent 1 (Clause & Directive Extractor):** Separates procedural history from operative orders to isolate binding directives.
+  * **Agent 2 (Timeline & Dependency Resolver):** Maps relative timeframes (*"within 14 days"*, *"within 24 hours"*) and resolves prerequisite dependency chains.
+  * **Agent 3 (Legal Risk & Penalty Assessor):** Evaluates default liabilities, contempt exposure, and scores severity (`CRITICAL`, `HIGH`, `MEDIUM`, `LOW`).
+  * **Agent 4 (Citation & Anti-Hallucination Auditor):** Cross-references extracted directives against the source document to verify page citations and verbatim quotes.
+
+* ⏱️ **Smart Relative Timeline Resolution:** Translates complex legal conditions (*"within 10 days of receipt"*) into concrete calendar dates based on the service date.
+
+* 🚨 **Risk & Consequence Mapping:** Explicitly details the legal fallout and penalties if a task is neglected or delayed.
+
+* 🛡️ **Anti-Hallucination Citation Grounding:** Every single extracted action item is directly anchored to its exact page number and verbatim excerpt from the judgment.
+
+* 👤 **Multi-Party Perspective Switcher:** Instantly filter duties between *Petitioner Counsel* (to track compliance) and *Respondent Defense Counsel* (to monitor opposing counsel deadlines).
+
+* 📅 **1-Click Execution & Calendar Sync:** Export all tracked obligations directly to Google/Apple Calendar (`.ics`) and download structured JSON data contracts.
 
 ---
 
-## 🏗️ Architecture
 
-```
-orderguard-ai/
-│
-├── core/
-│   ├── schemas.py          # Pydantic data contract (LegalActionMap, ActionItem, Citations)
-│   ├── extractor.py        # PDF text extractor with page boundary tracking
-│   └── pipeline.py         # Google Gemini extraction engine with mock fallback
-│
-├── samples/
-│   ├── generate_sample_order.py   # Realistic High Court sample order generator
-│   ├── make_pdf.py                # Standalone PDF generator
-│   ├── sample_court_order.txt     # Test judgment
-│   └── sample_court_order.pdf     # Test PDF
-│
-├── app.py                  # Full-featured Streamlit interactive dashboard
-├── api.py                  # FastAPI REST endpoints for frontend integration
-├── requirements.txt        # Project dependencies
-└── .env.example            # Environment variables template
-```
 
----
-
-## ⚡ Quickstart
-
-### 1. Clone & Install Dependencies
-```bash
-git clone https://github.com/your-repo/orderguard-ai.git
-cd orderguard-ai
-pip install -r requirements.txt
-```
-
-### 2. Configure Environment
-Create a `.env` file in the root directory:
-```env
-GEMINI_API_KEY=your_gemini_api_key_here
-```
-*(Note: If no API key is provided, the application automatically runs in demo mode with sample data so tests never break).*
-
-### 3. Run the Streamlit Dashboard
-```bash
-python -m streamlit run app.py
-```
-Open your browser at `http://localhost:8501`.
-
-### 4. Run the FastAPI Server (Optional for REST API)
-```bash
-python api.py
-```
-View interactive Swagger API documentation at `http://localhost:8000/docs`.
-
----
-
-## 📡 API Contract (For Frontend / Team Integration)
-
-### `POST /api/extract`
-Uploads a court order PDF and returns the validated `LegalActionMap`:
-
-```json
-{
-  "metadata": {
-    "case_title": "M/s Orient Textiles Ltd. vs. Province of Sindh & Others",
-    "case_number": "C.P. No. D-2849 of 2026",
-    "court_name": "High Court of Sindh, Karachi",
-    "order_date": "2026-09-28"
-  },
-  "actions": [
-    {
-      "id": "ACT-01",
-      "obligated_party": "Petitioner (M/s Orient Textiles)",
-      "action_required": "Deposit 15% of disputed demand (PKR 4.5M) with Nazir of Court",
-      "deadline_type": "Relative",
-      "deadline_text": "Within 10 days from today",
-      "days_offset": 10,
-      "condition": "Prerequisite to maintain stay order",
-      "consequence_risk": "Stay order automatically vacated and recovery resumes",
-      "risk_severity": "CRITICAL",
-      "source_citation": {
-        "page_number": 3,
-        "paragraph_reference": "Para 7",
-        "verbatim_quote": "The petitioner shall deposit 15% ... within ten (10) days..."
-      }
-    }
-  ]
-}
-```
+# 2. Run Application
+streamlit run app.py
