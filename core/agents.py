@@ -10,7 +10,18 @@ from typing import Callable, Optional, Dict, List
 import json
 import re
 
-from core.schemas import LegalActionMap, CaseMetadata, ActionItem, SourceCitation, AgentTraceStep
+from pydantic import BaseModel, Field
+
+try:
+    from core.schemas import AgentTraceStep
+except (ImportError, AttributeError):
+    class AgentTraceStep(BaseModel):
+        agent_name: str = Field(..., description="Name of the specialized agent")
+        role: str = Field(..., description="Specialty of the agent")
+        status: str = Field(default="Completed", description="Execution status")
+        findings_summary: str = Field(..., description="Summary of insights")
+
+from core.schemas import LegalActionMap, CaseMetadata, ActionItem, SourceCitation
 
 
 class ClauseExtractorAgent:

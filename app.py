@@ -5,8 +5,13 @@ Clean Streamlit Dashboard UI.
 """
 
 import os
+import sys
 from datetime import datetime, timedelta
 from html import escape
+
+# Ensure core modules are fresh during Streamlit hot-reloads
+for _mod in [k for k in list(sys.modules.keys()) if k == "core" or k.startswith("core.")]:
+    del sys.modules[_mod]
 
 import streamlit as st
 from dotenv import load_dotenv
