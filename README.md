@@ -56,20 +56,35 @@ cd orderguard-ai
 pip install -r requirements.txt
 ```
 
-### 2. Configure Environment
+### 2. Install OCR Engine (for scanned PDFs)
+
+PyMuPDF extracts text directly from digital PDFs. Pages with fewer than 50
+extractable characters are rendered and processed with Tesseract OCR. Install
+the Tesseract application separately from the Python packages, including the
+`eng` language data. For Urdu OCR attempts, also install the `urd` language
+data. If Tesseract is not on `PATH`, set `TESSERACT_CMD` to its executable path.
+
+On Windows, a standard installation in `C:\Program Files\Tesseract-OCR` is
+detected automatically. OCR confidence and Urdu text are not guaranteed to be
+correct; the dashboard and API provide extraction warnings and preserve Urdu
+text candidates for manual checking against the original PDF.
+
+### 3. Configure Environment
 Create a `.env` file in the root directory:
 ```env
 GEMINI_API_KEY=your_gemini_api_key_here
 ```
-*(Note: If no API key is provided, the application automatically runs in demo mode with sample data so tests never break).*
+Demo fallback is opt-in in the dashboard. The API defaults to real extraction
+and reports errors if Gemini is unavailable; clients may explicitly set
+`use_mock_fallback=true` to request demo data.
 
-### 3. Run the Streamlit Dashboard
+### 4. Run the Streamlit Dashboard
 ```bash
 python -m streamlit run app.py
 ```
 Open your browser at `http://localhost:8501`.
 
-### 4. Run the FastAPI Server (Optional for REST API)
+### 5. Run the FastAPI Server (Optional for REST API)
 ```bash
 python api.py
 ```
@@ -81,6 +96,11 @@ View interactive Swagger API documentation at `http://localhost:8000/docs`.
 
 ### `POST /api/extract`
 Uploads a court order PDF and returns the validated `LegalActionMap`:
+
+The response also includes `extraction_warnings` and `extraction_pages`.
+These report OCR/manual-review issues and per-page OCR confidence. When Urdu
+text is detected, `extraction_pages` includes the original text and a separate
+unverified `urdu_ocr_text` candidate.
 
 ```json
 {

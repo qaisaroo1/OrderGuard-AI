@@ -103,3 +103,23 @@ class LegalActionMap(BaseModel):
     agent_traces: List[AgentTraceStep] = Field(
         default_factory=list, description="Multi-agent audit trace detailing each agent's execution"
     )
+
+
+class ExtractionPageInfo(BaseModel):
+    page_number: int
+    method: str
+    char_count: int
+    ocr_confidence: Optional[float] = None
+    raw_text: Optional[str] = None
+    urdu_ocr_text: Optional[str] = None
+
+
+class LegalActionResponse(LegalActionMap):
+    extraction_warnings: List[str] = Field(
+        default_factory=list,
+        description="PDF extraction or OCR warnings requiring manual document review",
+    )
+    extraction_pages: List[ExtractionPageInfo] = Field(
+        default_factory=list,
+        description="Per-page OCR metadata and Urdu text variants for manual review",
+    )

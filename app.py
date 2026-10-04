@@ -17,7 +17,7 @@ import streamlit as st
 from dotenv import load_dotenv
 
 from core.schemas import LegalActionMap
-from core.extractor import DocumentExtractor
+from core.extractor import DocumentExtractor, ExtractionError
 from core.pipeline import LegalExtractionPipeline
 from core.agents import MultiAgentCoordinator
 from samples.generate_sample_order import SAMPLE_ORDER_TEXT
@@ -45,6 +45,12 @@ if "uploaded_file_name" not in st.session_state:
 
 if "action_map" not in st.session_state:
     st.session_state["action_map"] = None
+
+if "extraction_warnings" not in st.session_state:
+    st.session_state["extraction_warnings"] = []
+
+if "extraction_pages" not in st.session_state:
+    st.session_state["extraction_pages"] = []
 
 # -------------------------------------------------------------------
 # DESIGN SYSTEM
@@ -504,12 +510,12 @@ with st.sidebar:
         )
         model_choice = st.selectbox(
             "Extraction Model",
-            ["gemini-2.5-flash", "gemini-1.5-flash", "gemini-1.5-pro"],
+            ["gemini-3.5-flash-lite", "gemini-3.8-flash", "gemini-3.7-flash"],
             index=0,
         )
         use_mock_fallback = st.checkbox(
             "Allow Demo / Fallback Mode",
-            value=True,
+            value=False,
         )
 
     st.markdown("#### Quick Start")
@@ -629,18 +635,32 @@ with action_col:
 # -------------------------------------------------------------------
 if analyze_btn:
     document_text = ""
+    st.session_state["action_map"] = None
+    st.session_state["extraction_warnings"] = []
+    st.session_state["extraction_pages"] = []
 
     if uploaded_file is not None:
         with st.spinner("Extracting text and page boundaries..."):
-            if uploaded_file.name.lower().endswith(".pdf"):
-                extracted = DocumentExtractor.extract_from_pdf(
-                    uploaded_file.getvalue()
-                )
-                document_text = extracted["full_text_with_pages"]
-            else:
-                document_text = uploaded_file.getvalue().decode(
-                    "utf-8", errors="ignore"
-                )
+            try:
+                if uploaded_file.name.lower().endswith(".pdf"):
+                    extracted = DocumentExtractor.extract_from_pdf(
+                        uploaded_file.getvalue()
+                    )
+                    st.session_state["extraction_warnings"] = extracted["warnings"]
+                    st.session_state["extraction_pages"] = extracted["pages"]
+                    if any(page["text"].strip() for page in extracted["pages"]):
+                        document_text = extracted["full_text_with_pages"]
+                    else:
+                        st.error(
+                            "No readable text could be extracted from this PDF. "
+                            "Check the scan and Tesseract installation."
+                        )
+                else:
+                    document_text = uploaded_file.getvalue().decode(
+                        "utf-8", errors="replace"
+                    )
+            except ExtractionError as e:
+                st.error(f"PDF extraction failed: {e}")
 
     elif st.session_state.get("raw_text_input", "").strip():
         document_text = st.session_state["raw_text_input"]
@@ -673,6 +693,40 @@ if analyze_btn:
         except Exception as e:
             status_bar.empty()
             st.error(f"Analysis failed: {str(e)}")
+
+if analyze_btn:
+    for warning in st.session_state["extraction_warnings"]:
+        st.warning(warning)
+
+    review_pages = [
+        page
+        for page in st.session_state["extraction_pages"]
+        if page["raw_text"] or page["urdu_ocr_text"] or page["method"] == "ocr"
+    ]
+    if review_pages:
+        with st.expander("OCR details and Urdu text for manual review"):
+            for page in review_pages:
+                confidence = (
+                    f"{page['ocr_confidence']:.0f}%"
+                    if page["ocr_confidence"] is not None
+                    else "not available"
+                )
+                st.markdown(
+                    f"**Page {page['page']}: {page['method']} extraction, "
+                    f"{confidence} confidence**"
+                )
+                if page["raw_text"]:
+                    st.text_area(
+                        "Original PDF text",
+                        value=page["raw_text"],
+                        key=f"raw-extraction-page-{page['page']}",
+                    )
+                if page["urdu_ocr_text"]:
+                    st.text_area(
+                        "Unverified Urdu OCR attempt",
+                        value=page["urdu_ocr_text"],
+                        key=f"urdu-ocr-page-{page['page']}",
+                    )
 
 # -------------------------------------------------------------------
 # RESULTS DASHBOARD

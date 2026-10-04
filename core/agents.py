@@ -118,7 +118,7 @@ class MultiAgentCoordinator:
     Orchestrates the specialized multi-agent workflow:
     Step 1: Extraction -> Step 2: Timeline -> Step 3: Risk -> Step 4: Citation Audit.
     """
-    def __init__(self, api_key: Optional[str] = None, model_name: str = "gemini-2.5-flash"):
+    def __init__(self, api_key: Optional[str] = None, model_name: str = "gemini-3.5-flash-lite"):
         self.api_key = api_key
         self.model_name = model_name
         self.client = None
@@ -134,7 +134,7 @@ class MultiAgentCoordinator:
         self,
         document_text: str,
         progress_callback: Optional[Callable[[int, int, str, str], None]] = None,
-        use_mock_fallback: bool = True
+        use_mock_fallback: bool = False
     ) -> LegalActionMap:
         """
         Executes the 4-agent workflow with step-by-step progress notifications.
