@@ -14,6 +14,13 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+# Inherit Streamlit Cloud secrets into os.environ
+try:
+    if "GEMINI_API_KEY" in st.secrets:
+        os.environ["GEMINI_API_KEY"] = str(st.secrets["GEMINI_API_KEY"])
+except Exception:
+    pass
+
 from core.schemas import LegalActionMap
 from core.api_client import API_BASE_URL, submit_analysis
 from samples.generate_sample_order import SAMPLE_ORDER_TEXT
@@ -624,11 +631,23 @@ with st.sidebar:
         unsafe_allow_html=True,
     )
 
-    with st.expander("AI Settings", expanded=False):
-        if os.getenv("GEMINI_API_KEY"):
-            st.success("Gemini API key is configured on the backend.")
+    has_api_key = bool(os.getenv("GEMINI_API_KEY"))
+    with st.expander("AI Settings", expanded=not has_api_key):
+        user_key = st.text_input(
+            "Gemini API Key",
+            value=os.getenv("GEMINI_API_KEY", ""),
+            type="password",
+            help="Enter your Google Gemini API key or set it in Streamlit Cloud Secrets.",
+        )
+        if user_key and user_key.strip():
+            os.environ["GEMINI_API_KEY"] = user_key.strip()
+            has_api_key = True
+
+        if has_api_key:
+            st.success("Gemini API key is active.")
         else:
-            st.warning("Set GEMINI_API_KEY in the backend environment to use Gemini.")
+            st.info("No API key set: Demo / Fallback mode will be used automatically.")
+
         st.caption(f"Backend: {API_BASE_URL}")
         model_choice = st.selectbox(
             "Extraction Model",
@@ -637,7 +656,7 @@ with st.sidebar:
         )
         use_mock_fallback = st.checkbox(
             "Allow Demo / Fallback Mode",
-            value=False,
+            value=not has_api_key,
         )
 
     st.markdown("#### Quick Start")
