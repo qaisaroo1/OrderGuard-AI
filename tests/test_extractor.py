@@ -1,5 +1,7 @@
 import unittest
+import shutil
 from unittest.mock import patch
+from pathlib import Path
 
 import pymupdf
 import pytesseract
@@ -55,11 +57,11 @@ class DocumentExtractorTests(unittest.TestCase):
         "core.extractor._ocr_page",
         return_value=("Recognized order text", 42.0, 1),
     )
-    def test_reports_low_confidence_and_dropped_ocr_lines(self, _mock_ocr):
+    def test_reports_low_confidence_without_noisy_dropped_line_notice(self, _mock_ocr):
         result = DocumentExtractor.extract_from_pdf(make_pdf())
 
         self.assertTrue(any("low OCR confidence" in warning for warning in result["warnings"]))
-        self.assertTrue(any("dropped 1" in warning for warning in result["warnings"]))
+        self.assertFalse(any("dropped" in warning for warning in result["warnings"]))
 
     @patch(
         "core.extractor._ocr_page",
@@ -97,6 +99,53 @@ class DocumentExtractorTests(unittest.TestCase):
         self.assertIn("[Urdu text unreadable", result)
         self.assertIn("16.04.2025", result)
         self.assertIn("English line", result)
+
+
+class SuppliedJudgmentTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.samples = Path(__file__).resolve().parents[1].parent / "samples"
+
+    def test_preserves_page_specific_docket_headers(self):
+        result = DocumentExtractor.extract_from_pdf(
+            (self.samples / "case_3.pdf").read_bytes()
+        )
+
+        page_two = " ".join(result["pages"][1]["text"].split())
+        page_eight = " ".join(result["pages"][7]["text"].split())
+        self.assertIn("R.F.A. No.58 of 2025/BWP 2", page_two)
+        self.assertIn("R.F.A. No.58 of 2025/BWP 8", page_eight)
+
+    def test_flags_urdu_passages_for_manual_review(self):
+        result = DocumentExtractor.extract_from_pdf(
+            (self.samples / "case_6.pdf").read_bytes()
+        )
+
+        review_pages = [
+            page["page"] for page in result["pages"]
+            if page["raw_text"] or page["urdu_ocr_text"]
+        ]
+        self.assertEqual(review_pages, [5, 11])
+        self.assertTrue(
+            any("Urdu/Arabic-script text masked" in warning for warning in result["warnings"])
+        )
+
+    @unittest.skipUnless(
+        shutil.which("tesseract")
+        or Path(r"C:\Program Files\Tesseract-OCR\tesseract.exe").is_file(),
+        "Tesseract is not installed",
+    )
+    def test_extracts_scanned_judgment_with_ocr(self):
+        result = DocumentExtractor.extract_from_pdf(
+            (self.samples / "case_5.pdf").read_bytes()
+        )
+
+        self.assertEqual(result["total_pages"], 4)
+        self.assertTrue(all(page["method"] == "ocr" for page in result["pages"]))
+        self.assertTrue(
+            any("OCR used on pages [1, 2, 3, 4]" in warning for warning in result["warnings"])
+        )
+        self.assertFalse(any("dropped" in warning for warning in result["warnings"]))
 
 
 if __name__ == "__main__":

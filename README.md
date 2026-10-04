@@ -78,17 +78,41 @@ Demo fallback is opt-in in the dashboard. The API defaults to real extraction
 and reports errors if Gemini is unavailable; clients may explicitly set
 `use_mock_fallback=true` to request demo data.
 
-### 4. Run the Streamlit Dashboard
+### 4. Start the FastAPI backend
+
+In the first terminal:
+
+```powershell
+python -m uvicorn api:app --reload --host 127.0.0.1 --port 8000
+```
+
+The backend reads `GEMINI_API_KEY` from `.env` and runs PDF extraction/OCR
+before sending extracted text to Gemini. Set `ORDERGUARD_API_URL` only if the
+backend is listening somewhere other than `http://127.0.0.1:8000`.
+
+### 5. Run the Streamlit Dashboard
+
+In a second terminal, from the project root:
+
 ```bash
 python -m streamlit run app.py
 ```
 Open your browser at `http://localhost:8501`.
 
-### 5. Run the FastAPI Server (Optional for REST API)
+The dashboard submits uploads and pasted text to the FastAPI backend. Gemini is
+called by the backend using the configured key. Keep the backend running while
+using the dashboard. API documentation is at `http://127.0.0.1:8000/docs`.
+
+### 6. Run extraction, API, and frontend-client tests
+
 ```bash
-python api.py
+python -m unittest discover -s tests -v
 ```
-View interactive Swagger API documentation at `http://localhost:8000/docs`.
+
+The tests cover text extraction, scanned-page OCR, Urdu review metadata, API
+upload validation, and the supplied judgment samples. Gemini analysis is
+mocked in API tests; Tesseract-dependent sample tests are skipped if Tesseract
+is unavailable.
 
 ---
 
@@ -101,6 +125,11 @@ The response also includes `extraction_warnings` and `extraction_pages`.
 These report OCR/manual-review issues and per-page OCR confidence. When Urdu
 text is detected, `extraction_pages` includes the original text and a separate
 unverified `urdu_ocr_text` candidate.
+
+Gemini is called once per Analyze click to avoid hidden repeat usage. If it
+returns no obligations, the API returns an empty action list with an explicit
+manual-review warning and per-page extracted-text previews; it never substitutes
+unrelated demo obligations.
 
 ```json
 {

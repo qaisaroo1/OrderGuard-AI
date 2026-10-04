@@ -110,11 +110,16 @@ class ExtractionPageInfo(BaseModel):
     method: str
     char_count: int
     ocr_confidence: Optional[float] = None
+    text_preview: Optional[str] = None
     raw_text: Optional[str] = None
     urdu_ocr_text: Optional[str] = None
 
 
 class LegalActionResponse(LegalActionMap):
+    analysis_warnings: List[str] = Field(
+        default_factory=list,
+        description="Warnings about incomplete or uncertain AI analysis requiring manual review",
+    )
     extraction_warnings: List[str] = Field(
         default_factory=list,
         description="PDF extraction or OCR warnings requiring manual document review",

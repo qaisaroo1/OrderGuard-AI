@@ -5,24 +5,17 @@ Clean Streamlit Dashboard UI.
 """
 
 import os
-import sys
 from datetime import datetime, timedelta
 from html import escape
-
-# Ensure core modules are fresh during Streamlit hot-reloads
-for _mod in [k for k in list(sys.modules.keys()) if k == "core" or k.startswith("core.")]:
-    del sys.modules[_mod]
 
 import streamlit as st
 from dotenv import load_dotenv
 
-from core.schemas import LegalActionMap
-from core.extractor import DocumentExtractor, ExtractionError
-from core.pipeline import LegalExtractionPipeline
-from core.agents import MultiAgentCoordinator
-from samples.generate_sample_order import SAMPLE_ORDER_TEXT
-
 load_dotenv()
+
+from core.schemas import LegalActionMap
+from core.api_client import API_BASE_URL, submit_analysis
+from samples.generate_sample_order import SAMPLE_ORDER_TEXT
 
 # -------------------------------------------------------------------
 # PAGE CONFIG
@@ -51,6 +44,9 @@ if "extraction_warnings" not in st.session_state:
 
 if "extraction_pages" not in st.session_state:
     st.session_state["extraction_pages"] = []
+
+if "agent_traces" not in st.session_state:
+    st.session_state["agent_traces"] = []
 
 # -------------------------------------------------------------------
 # DESIGN SYSTEM
@@ -502,12 +498,11 @@ with st.sidebar:
     )
 
     with st.expander("AI Settings", expanded=False):
-        user_api_key = st.text_input(
-            "Gemini API Key",
-            value=os.getenv("GEMINI_API_KEY", ""),
-            type="password",
-            help="Enter your Google Gemini API key or use demo fallback mode.",
-        )
+        if os.getenv("GEMINI_API_KEY"):
+            st.success("Gemini API key is configured on the backend.")
+        else:
+            st.warning("Set GEMINI_API_KEY in the backend environment to use Gemini.")
+        st.caption(f"Backend: {API_BASE_URL}")
         model_choice = st.selectbox(
             "Extraction Model",
             ["gemini-3.5-flash-lite", "gemini-3.8-flash", "gemini-3.7-flash"],
@@ -585,6 +580,7 @@ with left:
             "Court judgment",
             type=["pdf", "txt"],
             label_visibility="collapsed",
+            max_upload_size=20,
         )
         if uploaded_file:
             st.session_state["uploaded_file_name"] = uploaded_file.name
@@ -634,65 +630,43 @@ with action_col:
 # PROCESSING PIPELINE — ORIGINAL LOGIC PRESERVED
 # -------------------------------------------------------------------
 if analyze_btn:
-    document_text = ""
     st.session_state["action_map"] = None
     st.session_state["extraction_warnings"] = []
     st.session_state["extraction_pages"] = []
+    st.session_state["agent_traces"] = []
 
     if uploaded_file is not None:
-        with st.spinner("Extracting text and page boundaries..."):
-            try:
-                if uploaded_file.name.lower().endswith(".pdf"):
-                    extracted = DocumentExtractor.extract_from_pdf(
-                        uploaded_file.getvalue()
-                    )
-                    st.session_state["extraction_warnings"] = extracted["warnings"]
-                    st.session_state["extraction_pages"] = extracted["pages"]
-                    if any(page["text"].strip() for page in extracted["pages"]):
-                        document_text = extracted["full_text_with_pages"]
-                    else:
-                        st.error(
-                            "No readable text could be extracted from this PDF. "
-                            "Check the scan and Tesseract installation."
-                        )
-                else:
-                    document_text = uploaded_file.getvalue().decode(
-                        "utf-8", errors="replace"
-                    )
-            except ExtractionError as e:
-                st.error(f"PDF extraction failed: {e}")
-
+        source = {
+            "file_name": uploaded_file.name,
+            "file_bytes": uploaded_file.getvalue(),
+        }
     elif st.session_state.get("raw_text_input", "").strip():
-        document_text = st.session_state["raw_text_input"]
-
+        source = {"raw_text": st.session_state["raw_text_input"]}
     else:
-        st.warning(
-            "Please upload a court order PDF/TXT or paste the judgment text first."
-        )
+        source = None
+        st.warning("Please upload a court order PDF/TXT or paste the judgment text first.")
 
-    if document_text:
-        status_bar = st.progress(10, text="Initializing Multi-Agent Engine...")
-
-        def on_agent_progress(step, total, agent_name, message):
-            pct = int((step / total) * 90)
-            status_bar.progress(pct, text=f"🤖 [{step}/{total}] {agent_name}: {message}")
-
+    if source is not None:
         try:
-            coordinator = MultiAgentCoordinator(
-                api_key=user_api_key,
-                model_name=model_choice,
-            )
-            action_map = coordinator.execute_workflow(
-                document_text=document_text,
-                progress_callback=on_agent_progress,
-                use_mock_fallback=use_mock_fallback,
-            )
-            status_bar.progress(100, text="✅ All 4 Specialized Agents Completed Successfully!")
+            with st.spinner("Sending document to the local API for OCR and Gemini analysis..."):
+                action_map = submit_analysis(
+                    **source,
+                    model_name=model_choice,
+                    use_mock_fallback=use_mock_fallback,
+                )
             st.session_state["action_map"] = action_map
-            st.success("Legal Action Map generated successfully via Multi-Agent Pipeline.")
-        except Exception as e:
-            status_bar.empty()
-            st.error(f"Analysis failed: {str(e)}")
+            st.session_state["extraction_warnings"] = action_map.extraction_warnings
+            st.session_state["extraction_pages"] = action_map.extraction_pages
+            st.session_state["agent_traces"] = action_map.agent_traces
+            if action_map.analysis_warnings:
+                for warning in action_map.analysis_warnings:
+                    st.warning(warning)
+            elif action_map.actions:
+                st.success("Legal Action Map returned by the FastAPI and Gemini pipeline.")
+            else:
+                st.info("Analysis completed, but no actionable obligations were identified.")
+        except (RuntimeError, ValueError) as error:
+            st.error(str(error))
 
 if analyze_btn:
     for warning in st.session_state["extraction_warnings"]:
@@ -701,31 +675,52 @@ if analyze_btn:
     review_pages = [
         page
         for page in st.session_state["extraction_pages"]
-        if page["raw_text"] or page["urdu_ocr_text"] or page["method"] == "ocr"
+        if (
+            page.raw_text
+            or page.urdu_ocr_text
+            or page.method == "ocr"
+            or (
+                st.session_state.get("action_map") is not None
+                and not st.session_state["action_map"].actions
+            )
+        )
     ]
     if review_pages:
-        with st.expander("OCR details and Urdu text for manual review"):
+        with st.expander(
+            "Extracted text and OCR details for manual review",
+            expanded=bool(
+                st.session_state.get("action_map") is not None
+                and not st.session_state["action_map"].actions
+            ),
+        ):
             for page in review_pages:
                 confidence = (
-                    f"{page['ocr_confidence']:.0f}%"
-                    if page["ocr_confidence"] is not None
+                    f"{page.ocr_confidence:.0f}%"
+                    if page.ocr_confidence is not None
                     else "not available"
                 )
                 st.markdown(
-                    f"**Page {page['page']}: {page['method']} extraction, "
-                    f"{confidence} confidence**"
+                    f"**Page {page.page_number}: {page.method} extraction, "
+                    f"{confidence} confidence, {page.char_count} characters**"
                 )
-                if page["raw_text"]:
+                if page.text_preview:
+                    suffix = " (preview)" if page.char_count > len(page.text_preview) else ""
+                    st.text_area(
+                        f"Extracted text{suffix}",
+                        value=page.text_preview,
+                        key=f"extracted-text-preview-{page.page_number}",
+                    )
+                if page.raw_text:
                     st.text_area(
                         "Original PDF text",
-                        value=page["raw_text"],
-                        key=f"raw-extraction-page-{page['page']}",
+                        value=page.raw_text,
+                        key=f"raw-extraction-page-{page.page_number}",
                     )
-                if page["urdu_ocr_text"]:
+                if page.urdu_ocr_text:
                     st.text_area(
                         "Unverified Urdu OCR attempt",
-                        value=page["urdu_ocr_text"],
-                        key=f"urdu-ocr-page-{page['page']}",
+                        value=page.urdu_ocr_text,
+                        key=f"urdu-ocr-page-{page.page_number}",
                     )
 
 # -------------------------------------------------------------------
@@ -753,46 +748,45 @@ Order date: {escape(str(meta.order_date))}
 
     st.write("")
 
-    # KPI row
-    upcoming_count = sum(
-        1
-        for a in action_map.actions
-        if a.days_offset is not None and a.days_offset >= 0
-    )
+    if action_map.actions:
+        upcoming_count = sum(
+            1
+            for a in action_map.actions
+            if a.days_offset is not None and a.days_offset >= 0
+        )
+        k1, k2, k3 = st.columns(3, gap="medium")
 
-    k1, k2, k3 = st.columns(3, gap="medium")
-
-    with k1:
-        st.markdown(
-            f"""<div class="stat-card stat-blue">
-<div class="stat-label">Total Actions</div>
+        with k1:
+            st.markdown(
+                f"""<div class="stat-card stat-blue">
+<div class="stat-label">Future Obligations</div>
 <div class="stat-number">{action_map.total_obligations}</div>
 <div class="stat-note">Obligations identified</div>
 </div>""",
-            unsafe_allow_html=True,
-        )
+                unsafe_allow_html=True,
+            )
 
-    with k2:
-        st.markdown(
-            f"""<div class="stat-card stat-danger">
+        with k2:
+            st.markdown(
+                f"""<div class="stat-card stat-danger">
 <div class="stat-label">Critical / High Risk</div>
 <div class="stat-number">{action_map.critical_risks_count}</div>
 <div class="stat-note">Require close attention</div>
 </div>""",
-            unsafe_allow_html=True,
-        )
+                unsafe_allow_html=True,
+            )
 
-    with k3:
-        st.markdown(
-            f"""<div class="stat-card stat-green">
+        with k3:
+            st.markdown(
+                f"""<div class="stat-card stat-green">
 <div class="stat-label">Tracked Deadlines</div>
 <div class="stat-number">{upcoming_count}</div>
 <div class="stat-note">Relative deadlines detected</div>
 </div>""",
-            unsafe_allow_html=True,
-        )
+                unsafe_allow_html=True,
+            )
 
-    st.write("")
+        st.write("")
 
     # Summary
     summary_left, summary_right = st.columns([1, 2], gap="large")
@@ -819,57 +813,68 @@ Order date: {escape(str(meta.order_date))}
         )
 
     st.write("")
-    st.markdown(
-        '<div class="section-title">Legal Action Map</div>',
-        unsafe_allow_html=True,
-    )
-    st.markdown(
-        '<div class="section-caption">Review obligations by responsible party and risk level.</div>',
-        unsafe_allow_html=True,
-    )
-
-    # Filters
-    parties = sorted(
-        list(set(a.obligated_party for a in action_map.actions))
-    )
-
-    filter_col1, filter_col2 = st.columns(2, gap="medium")
-
-    with filter_col1:
-        selected_party = st.selectbox(
-            "Responsible party",
-            ["All Parties"] + parties,
+    if action_map.actions:
+        st.markdown(
+            '<div class="section-title">Legal Action Map</div>',
+            unsafe_allow_html=True,
         )
-
-    with filter_col2:
-        selected_severity = st.selectbox(
-            "Risk level",
-            ["All Severities", "CRITICAL", "HIGH", "MEDIUM", "LOW"],
+        st.markdown(
+            '<div class="section-caption">Review obligations by responsible party and risk level.</div>',
+            unsafe_allow_html=True,
         )
+        parties = sorted(
+            list(set(a.obligated_party for a in action_map.actions))
+        )
+        filter_col1, filter_col2 = st.columns(2, gap="medium")
 
-    filtered_actions = action_map.actions
+        with filter_col1:
+            selected_party = st.selectbox(
+                "Responsible party",
+                ["All Parties"] + parties,
+            )
 
-    if selected_party != "All Parties":
-        filtered_actions = [
-            a
-            for a in filtered_actions
-            if a.obligated_party == selected_party
-        ]
+        with filter_col2:
+            selected_severity = st.selectbox(
+                "Risk level",
+                ["All Severities", "CRITICAL", "HIGH", "MEDIUM", "LOW"],
+            )
 
-    if selected_severity != "All Severities":
-        filtered_actions = [
-            a
-            for a in filtered_actions
-            if a.risk_severity == selected_severity
-        ]
+        filtered_actions = action_map.actions
+        if selected_party != "All Parties":
+            filtered_actions = [
+                a for a in filtered_actions if a.obligated_party == selected_party
+            ]
+        if selected_severity != "All Severities":
+            filtered_actions = [
+                a for a in filtered_actions if a.risk_severity == selected_severity
+            ]
 
-    st.caption(f"{len(filtered_actions)} action(s) shown")
+        st.caption(f"{len(filtered_actions)} action(s) shown")
+        if not filtered_actions:
+            st.info("No action items match the selected filters.")
+    else:
+        st.markdown(
+            '<div class="section-title">Court Outcome</div>',
+            unsafe_allow_html=True,
+        )
+        st.info(
+            "Analysis completed. This judgment does not order a future task or "
+            "deadline, so there are no obligation cards to show."
+        )
+        st.markdown(
+            f"""<div class="case-card">
+<div class="case-kicker">DECISION IN THIS JUDGMENT</div>
+<div style="color:#334155;line-height:1.65;font-size:.95rem;margin-top:.55rem;">{escape(str(meta.brief_summary))}</div>
+</div>""",
+            unsafe_allow_html=True,
+        )
+        if st.session_state["extraction_pages"]:
+            st.caption(
+                "Extracted page text is expanded above for checking against the original."
+            )
 
     # Action cards
-    if not filtered_actions:
-        st.info("No action items match the selected filters.")
-
-    else:
+    if action_map.actions and filtered_actions:
         for item in filtered_actions:
             severity = str(item.risk_severity).upper()
             risk_class = {

@@ -211,14 +211,9 @@ class DocumentExtractor:
                 method, confidence = "direct", None
                 if len(text) < MIN_CHARS:
                     try:
-                        text, confidence, dropped = _ocr_page(page)
+                        text, confidence, _ = _ocr_page(page)
                         text = text.strip()
                         method = "ocr"
-                        if dropped:
-                            warnings.append(
-                                f"Page {page_number}: dropped {dropped} short "
-                                "low-confidence OCR line(s) (likely stamps/signatures/noise)"
-                            )
                     except Exception as error:
                         detail = str(error).strip()
                         if isinstance(error, pytesseract.TesseractNotFoundError):

@@ -4,6 +4,7 @@ Exposes clean endpoints for PDF ingestion and structured legal action extraction
 """
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.concurrency import run_in_threadpool
 from typing import Optional
 
 from core.schemas import (
@@ -66,7 +67,8 @@ def get_sample_action_map():
 async def extract_court_order(
     file: Optional[UploadFile] = File(None),
     raw_text: Optional[str] = Form(None),
-    use_mock_fallback: bool = Form(False)
+    use_mock_fallback: bool = Form(False),
+    model_name: str = Form("gemini-3.5-flash-lite"),
 ):
     """
     Upload a court order PDF or supply plain text to generate a structured Legal Action Map.
@@ -95,6 +97,7 @@ async def extract_court_order(
                         method=page["method"],
                         char_count=page["char_count"],
                         ocr_confidence=page["ocr_confidence"],
+                        text_preview=page["text"][:1000],
                         raw_text=page["raw_text"],
                         urdu_ocr_text=page["urdu_ocr_text"],
                     )
@@ -118,9 +121,22 @@ async def extract_court_order(
                 detail="The provided document contains no readable text.",
             )
 
-        result = pipeline.analyze_order(text_to_analyze, use_mock_fallback=use_mock_fallback)
+        request_pipeline = LegalExtractionPipeline(model_name=model_name)
+        result = await run_in_threadpool(
+            request_pipeline.analyze_order,
+            text_to_analyze,
+            use_mock_fallback=use_mock_fallback,
+        )
+        analysis_warnings = []
+        if not result.actions:
+            analysis_warnings.append(
+                "Gemini did not identify actionable directives in this analysis. "
+                "No obligations were created. Review the extracted page text below; "
+                "analyze again only if you choose to spend another Gemini request."
+            )
         return LegalActionResponse(
             **result.model_dump(),
+            analysis_warnings=analysis_warnings,
             extraction_warnings=extraction_warnings,
             extraction_pages=extraction_pages,
         )
