@@ -684,22 +684,18 @@ if st.session_state.get("action_map"):
     st.markdown("---")
 
     # Case header
-    st.markdown(
-        f"""
-        <div class="case-card">
-            <div class="case-kicker">ACTIVE CASE</div>
-            <div class="case-title">{escape(str(meta.case_title))}</div>
-            <div class="case-meta">
-                <strong>{escape(str(meta.case_number))}</strong>
-                &nbsp; • &nbsp;
-                {escape(str(meta.court_name))}
-                &nbsp; • &nbsp;
-                Order date: {escape(str(meta.order_date))}
-            </div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
+    case_header_html = f"""<div class="case-card">
+<div class="case-kicker">ACTIVE CASE</div>
+<div class="case-title">{escape(str(meta.case_title))}</div>
+<div class="case-meta">
+<strong>{escape(str(meta.case_number))}</strong>
+&nbsp; • &nbsp;
+{escape(str(meta.court_name))}
+&nbsp; • &nbsp;
+Order date: {escape(str(meta.order_date))}
+</div>
+</div>"""
+    st.markdown(case_header_html, unsafe_allow_html=True)
 
     st.write("")
 
@@ -714,37 +710,31 @@ if st.session_state.get("action_map"):
 
     with k1:
         st.markdown(
-            f"""
-            <div class="stat-card stat-blue">
-                <div class="stat-label">Total Actions</div>
-                <div class="stat-number">{action_map.total_obligations}</div>
-                <div class="stat-note">Obligations identified</div>
-            </div>
-            """,
+            f"""<div class="stat-card stat-blue">
+<div class="stat-label">Total Actions</div>
+<div class="stat-number">{action_map.total_obligations}</div>
+<div class="stat-note">Obligations identified</div>
+</div>""",
             unsafe_allow_html=True,
         )
 
     with k2:
         st.markdown(
-            f"""
-            <div class="stat-card stat-danger">
-                <div class="stat-label">Critical / High Risk</div>
-                <div class="stat-number">{action_map.critical_risks_count}</div>
-                <div class="stat-note">Require close attention</div>
-            </div>
-            """,
+            f"""<div class="stat-card stat-danger">
+<div class="stat-label">Critical / High Risk</div>
+<div class="stat-number">{action_map.critical_risks_count}</div>
+<div class="stat-note">Require close attention</div>
+</div>""",
             unsafe_allow_html=True,
         )
 
     with k3:
         st.markdown(
-            f"""
-            <div class="stat-card stat-green">
-                <div class="stat-label">Tracked Deadlines</div>
-                <div class="stat-number">{upcoming_count}</div>
-                <div class="stat-note">Relative deadlines detected</div>
-            </div>
-            """,
+            f"""<div class="stat-card stat-green">
+<div class="stat-label">Tracked Deadlines</div>
+<div class="stat-number">{upcoming_count}</div>
+<div class="stat-note">Relative deadlines detected</div>
+</div>""",
             unsafe_allow_html=True,
         )
 
@@ -755,40 +745,22 @@ if st.session_state.get("action_map"):
 
     with summary_left:
         st.markdown(
-            f"""
-            <div class="case-card">
-                <div class="case-kicker">COURT INFORMATION</div>
-                <div style="margin-top:.6rem;color:#10213F;font-weight:750;">
-                    Presiding Bench
-                </div>
-                <div class="case-meta">
-                    {escape(str(meta.judge_names or "Not specified"))}
-                </div>
-                <div style="margin-top:.9rem;color:#10213F;font-weight:750;">
-                    Order Date
-                </div>
-                <div class="case-meta">
-                    {escape(str(meta.order_date))}
-                </div>
-            </div>
-            """,
+            f"""<div class="case-card">
+<div class="case-kicker">COURT INFORMATION</div>
+<div style="margin-top:.6rem;color:#10213F;font-weight:750;">Presiding Bench</div>
+<div class="case-meta">{escape(str(meta.judge_names or "Not specified"))}</div>
+<div style="margin-top:.9rem;color:#10213F;font-weight:750;">Order Date</div>
+<div class="case-meta">{escape(str(meta.order_date))}</div>
+</div>""",
             unsafe_allow_html=True,
         )
 
     with summary_right:
         st.markdown(
-            f"""
-            <div class="case-card">
-                <div class="case-kicker">CASE SUMMARY</div>
-                <div style="
-                    color:#334155;
-                    line-height:1.65;
-                    font-size:.9rem;
-                    margin-top:.55rem;">
-                    {escape(str(meta.brief_summary))}
-                </div>
-            </div>
-            """,
+            f"""<div class="case-card">
+<div class="case-kicker">CASE SUMMARY</div>
+<div style="color:#334155;line-height:1.65;font-size:.9rem;margin-top:.55rem;">{escape(str(meta.brief_summary))}</div>
+</div>""",
             unsafe_allow_html=True,
         )
 
@@ -860,84 +832,48 @@ if st.session_state.get("action_map"):
                 )
                 calculated_date_str = calc_date.strftime("%d %b %Y")
 
-            condition_html = ""
-            if item.condition:
-                condition_html = f"""
-                    <div class="detail-box">
-                        <div class="detail-label">Condition</div>
-                        <div class="detail-value">
-                            {escape(str(item.condition))}
-                        </div>
-                    </div>
-                """
+            condition_html = (
+                f'<div class="detail-box"><div class="detail-label">Condition</div><div class="detail-value">{escape(str(item.condition))}</div></div>'
+                if item.condition
+                else ""
+            )
 
-            target_html = ""
-            if item.target_party:
-                target_html = f"""
-                    <div class="detail-box">
-                        <div class="detail-label">Target / Beneficiary</div>
-                        <div class="detail-value">
-                            {escape(str(item.target_party))}
-                        </div>
-                    </div>
-                """
+            target_html = (
+                f'<div class="detail-box"><div class="detail-label">Target / Beneficiary</div><div class="detail-value">{escape(str(item.target_party))}</div></div>'
+                if item.target_party
+                else ""
+            )
 
             date_html = (
-                f"""
-                <div class="detail-box">
-                    <div class="detail-label">Target Date</div>
-                    <div class="detail-value">{escape(calculated_date_str)}</div>
-                </div>
-                """
+                f'<div class="detail-box"><div class="detail-label">Target Date</div><div class="detail-value">{escape(calculated_date_str)}</div></div>'
                 if calculated_date_str
                 else ""
             )
 
-            st.markdown(
-                f"""
-                <div class="action-card">
-                    <div class="action-top">
-                        <div>
-                            <div class="action-id">
-                                {escape(str(item.id))}
-                            </div>
-                            <div class="party">
-                                {escape(str(item.obligated_party))}
-                            </div>
-                        </div>
-                        <span class="risk-badge {risk_class}">
-                            {escape(severity)} RISK
-                        </span>
-                    </div>
-
-                    <div class="directive">
-                        {escape(str(item.action_required))}
-                    </div>
-
-                    <div class="detail-grid">
-                        <div class="detail-box">
-                            <div class="detail-label">Deadline</div>
-                            <div class="detail-value">
-                                {escape(str(item.deadline_text))}
-                                {f" • {escape(str(item.deadline_type))}" if item.deadline_type else ""}
-                            </div>
-                        </div>
-
-                        {date_html}
-                        {condition_html}
-                        {target_html}
-                    </div>
-
-                    <div class="consequence-box">
-                        <div class="detail-label">If missed</div>
-                        <div class="detail-value">
-                            {escape(str(item.consequence_risk))}
-                        </div>
-                    </div>
-                </div>
-                """,
-                unsafe_allow_html=True,
-            )
+            action_card_html = f"""<div class="action-card">
+<div class="action-top">
+<div>
+<div class="action-id">{escape(str(item.id))}</div>
+<div class="party">{escape(str(item.obligated_party))}</div>
+</div>
+<span class="risk-badge {risk_class}">{escape(severity)} RISK</span>
+</div>
+<div class="directive">{escape(str(item.action_required))}</div>
+<div class="detail-grid">
+<div class="detail-box">
+<div class="detail-label">Deadline</div>
+<div class="detail-value">{escape(str(item.deadline_text))}{f" • {escape(str(item.deadline_type))}" if item.deadline_type else ""}</div>
+</div>
+{date_html}
+{condition_html}
+{target_html}
+</div>
+<div class="consequence-box">
+<div class="detail-label">If missed</div>
+<div class="detail-value">{escape(str(item.consequence_risk))}</div>
+</div>
+</div>"""
+            st.markdown(action_card_html, unsafe_allow_html=True)
 
             # Evidence stays functional but is visually secondary.
             citation = item.source_citation
@@ -948,11 +884,7 @@ if st.session_state.get("action_map"):
                     f"**{escape(str(citation.paragraph_reference or 'Reference'))}**"
                 )
                 st.markdown(
-                    f"""
-                    <div class="evidence-box">
-                        “{escape(str(citation.verbatim_quote))}”
-                    </div>
-                    """,
+                    f'<div class="evidence-box">“{escape(str(citation.verbatim_quote))}”</div>',
                     unsafe_allow_html=True,
                 )
 
@@ -963,19 +895,15 @@ if st.session_state.get("action_map"):
         with st.expander("🤖 Multi-Agent Execution Audit Log (Judge View)", expanded=False):
             st.markdown("##### Specialized Agent Pipeline Execution Trace")
             for trace in action_map.agent_traces:
-                st.markdown(
-                    f"""
-                    <div style="background: rgba(125, 125, 125, 0.05); border-left: 3px solid #1D4ED8; padding: 10px 14px; margin-bottom: 10px; border-radius: 4px;">
-                        <div style="display: flex; justify-content: space-between; align-items: center;">
-                            <strong style="color: #1D4ED8; font-size: 0.95rem;">{escape(str(trace.agent_name))}</strong>
-                            <span style="color: #10B981; font-weight: 700; font-size: 0.8rem;">● {escape(str(trace.status))}</span>
-                        </div>
-                        <div style="font-size: 0.85rem; opacity: 0.75; margin: 2px 0;">{escape(str(trace.role))}</div>
-                        <div style="font-size: 0.9rem; margin-top: 4px;">{escape(str(trace.findings_summary))}</div>
-                    </div>
-                    """,
-                    unsafe_allow_html=True,
-                )
+                trace_html = f"""<div style="background: rgba(125, 125, 125, 0.05); border-left: 3px solid #1D4ED8; padding: 10px 14px; margin-bottom: 10px; border-radius: 4px;">
+<div style="display: flex; justify-content: space-between; align-items: center;">
+<strong style="color: #1D4ED8; font-size: 0.95rem;">{escape(str(trace.agent_name))}</strong>
+<span style="color: #10B981; font-weight: 700; font-size: 0.8rem;">● {escape(str(trace.status))}</span>
+</div>
+<div style="font-size: 0.85rem; opacity: 0.75; margin: 2px 0;">{escape(str(trace.role))}</div>
+<div style="font-size: 0.9rem; margin-top: 4px;">{escape(str(trace.findings_summary))}</div>
+</div>"""
+                st.markdown(trace_html, unsafe_allow_html=True)
 
     # ----------------------------------------------------------------
     # EXPORTS — CLEAN, SECONDARY ACTIONS
