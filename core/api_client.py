@@ -1,5 +1,6 @@
 """HTTP client used by the Streamlit frontend to call the local FastAPI service."""
 import os
+from typing import Optional
 
 import requests
 from pydantic import ValidationError
@@ -14,9 +15,9 @@ def submit_analysis(
     *,
     model_name: str,
     use_mock_fallback: bool,
-    file_name: str | None = None,
-    file_bytes: bytes | None = None,
-    raw_text: str | None = None,
+    file_name: Optional[str] = None,
+    file_bytes: Optional[bytes] = None,
+    raw_text: Optional[str] = None,
 ) -> LegalActionResponse:
     """Submit a document to FastAPI and validate the structured response."""
     data = {

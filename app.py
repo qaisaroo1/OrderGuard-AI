@@ -792,7 +792,59 @@ if analyze_btn:
                 st.success("Legal Action Map returned by the FastAPI and Gemini pipeline.")
             else:
                 st.info("Analysis completed, but no actionable obligations were identified.")
-        except (RuntimeError, ValueError) as error:
+        except RuntimeError as api_error:
+            if "Could not connect to the OrderGuard API" in str(api_error):
+                try:
+                    with st.spinner("Local API offline. Running autonomous pipeline directly in-process..."):
+                        from core.extractor import DocumentExtractor
+                        from core.pipeline import LegalExtractionPipeline
+                        from core.schemas import ExtractionPageInfo, LegalActionResponse
+
+                        ext_warnings = []
+                        ext_pages = []
+                        if "file_name" in source and "file_bytes" in source:
+                            fname = source["file_name"]
+                            fbytes = source["file_bytes"]
+                            if fname.lower().endswith(".pdf"):
+                                extracted_data = DocumentExtractor.extract_from_pdf(fbytes)
+                                text_to_analyze = extracted_data["full_text_with_pages"]
+                                ext_warnings = extracted_data["warnings"]
+                                ext_pages = [
+                                    ExtractionPageInfo(
+                                        page_number=p["page"],
+                                        method=p["method"],
+                                        char_count=p["char_count"],
+                                        ocr_confidence=p["ocr_confidence"],
+                                        text_preview=p["text"][:1000],
+                                        raw_text=p["raw_text"],
+                                        urdu_ocr_text=p["urdu_ocr_text"],
+                                    )
+                                    for p in extracted_data["pages"]
+                                ]
+                            else:
+                                text_to_analyze = fbytes.decode("utf-8", errors="replace")
+                        else:
+                            text_to_analyze = source["raw_text"]
+
+                        pipe = LegalExtractionPipeline(model_name=model_choice)
+                        pipeline_res = pipe.analyze_order(
+                            text_to_analyze, use_mock_fallback=use_mock_fallback
+                        )
+                        action_map = LegalActionResponse(
+                            **pipeline_res.model_dump(),
+                            extraction_warnings=ext_warnings,
+                            extraction_pages=ext_pages,
+                        )
+                        st.session_state["action_map"] = action_map
+                        st.session_state["extraction_warnings"] = action_map.extraction_warnings
+                        st.session_state["extraction_pages"] = action_map.extraction_pages
+                        st.session_state["agent_traces"] = action_map.agent_traces
+                        st.success("Legal Action Map generated successfully (in-process engine).")
+                except Exception as inner_error:
+                    st.error(f"Analysis failed: {str(inner_error)}")
+            else:
+                st.error(str(api_error))
+        except ValueError as error:
             st.error(str(error))
 
 if analyze_btn:
