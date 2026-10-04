@@ -56,15 +56,18 @@ class LegalExtractionPipeline:
         self,
         text_with_pages: str,
         use_mock_fallback: bool = False,
-        progress_callback = None
+        progress_callback = None,
+        *args,
+        **kwargs
     ) -> LegalActionMap:
         """
         Executes the specialized multi-agent pipeline and returns a validated LegalActionMap.
         """
+        cb = progress_callback or kwargs.get("progress_callback", None)
         coordinator = MultiAgentCoordinator(api_key=self.api_key, model_name=self.model_name)
         return coordinator.execute_workflow(
             document_text=text_with_pages,
-            progress_callback=progress_callback,
+            progress_callback=cb,
             use_mock_fallback=use_mock_fallback
         )
 

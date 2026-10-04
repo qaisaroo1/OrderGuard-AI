@@ -14,6 +14,7 @@ from dotenv import load_dotenv
 from core.schemas import LegalActionMap
 from core.extractor import DocumentExtractor
 from core.pipeline import LegalExtractionPipeline
+from core.agents import MultiAgentCoordinator
 from samples.generate_sample_order import SAMPLE_ORDER_TEXT
 
 load_dotenv()
@@ -652,14 +653,14 @@ if analyze_btn:
             status_bar.progress(pct, text=f"🤖 [{step}/{total}] {agent_name}: {message}")
 
         try:
-            pipeline = LegalExtractionPipeline(
+            coordinator = MultiAgentCoordinator(
                 api_key=user_api_key,
                 model_name=model_choice,
             )
-            action_map = pipeline.analyze_order(
-                document_text,
-                use_mock_fallback=use_mock_fallback,
+            action_map = coordinator.execute_workflow(
+                document_text=document_text,
                 progress_callback=on_agent_progress,
+                use_mock_fallback=use_mock_fallback,
             )
             status_bar.progress(100, text="✅ All 4 Specialized Agents Completed Successfully!")
             st.session_state["action_map"] = action_map
